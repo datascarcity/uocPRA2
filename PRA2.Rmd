@@ -1,0 +1,415 @@
+---
+title: "Práctica 2"
+author: "Marco Rizzetto"
+date: "2023-06-16"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(fig.width=6, fig.height=4) 
+setwd("D:/10-MASTER/40-SEMESTRE 4/40-PRACTICA2")
+library(ggplot2)
+library(ggfortify)
+library(forecast)
+library(dplyr)
+library(car)
+library(rcompanion)
+library(corrplot)
+library(caret)
+library(pROC)
+```
+
+## 1.Descripción del dataset
+
+El conjunto de datos objeto de estudio contiene datos médicos relativos a las condiciones de salud de más de 300 pacientes. El objetivo del dataset es el de proporcionar un valor predictivo para determinar si el paciente tiene un alto riesgo de padecer enfermedades cardíacas o no.
+
+Antes de generar un nuevo modelo de regresión logística basado en los datos disponibles se quiere responder a algunas preguntas básicas relativas a diferencias entre grupos demográficos, o buscar correlaciones entre algunos parámetros médicos sencillos y el resultado de la predicción contenida en el dataset. Aplicar algoritmos automáticos para determinar si un paciente puede padecer enfermedades cardíacas es muy útil en campo médico y sobre todo de medicina preventiva, pudiendo ser muy útil detectar factores de riesgo en determinadas poblaciones para empezar a hacer screening en el momento más adecuado.
+
+Se carga el dataset utilizando la función _read.csv()_ y se puede comprobar que se ha cargado correctamente utilizando las funciones _dim()_ y _head()_. En este caso se puede ver que se ha importado bien.
+
+Se puede proceder a comprobar que las variables se hayan importado en el formato correcto utilizando la función _sapply()_ y luego comprobando los valores de cada variable.
+
+- **age**: la edad del paciente en años, es una variable de tipo integer, los valores son los esperados, entre 29 y 77 años
+
+- **sex**: el sexo del paciente, debería ser una variable dicotómica y se ha importado como integer, por tanto se cambian al nuevo formato utilizando la función _factor()_. 1 es Masculino y 0 es Femenino, por comodidad se decide cambiar los valores de números a letras M y F.
+
+- **cp**: tipo de dolor en el pecho, es una variable de tipo factor que, con valores entre 0 y 3. Se ha importado como integer, se podría dejar así pero lo correcto es convertirla a factor con la función _as.factor()_. 0 representa un paciente sin síntomas, 1 un paciente con síntomas típicos de angina de pecho, 2 un paciente con angina atípico y 3 con dolor no relacionado con angina de pecho.
+
+- **trtbps**: valor de la tensión arterial en reposo, medida en mmHg: Es una variable de tipo integer, se puede ver que los valores son correctos encontrándose entre 94 y 200 mmHg, no hay valores extremos.
+
+- **chol**: valor de colesterol en mg/dl, es una variable de tipo integer, se puede ver que los valores son correctos encontrándose entre 126 y 564. Más adelante se comprobará si hay outliers entre los valores extremos.
+
+- **fbs**: es una variable dicotómica que toma valor 1 si el valor de la glucosa supera los 120 mg/dl y 0 en caso contrario, se ha importado como integer pero se puede convertir a boolean con la función _as.logical()_. No se detectan anomalías con los valores.
+
+- **restecg**: resultados del electrocardiograma. Debería ser una variable categórica con tres valores, 0, 1 y 2 pero se ha importado como variable de tipo integer. Se convierte a factor con la función _as.factor()_.
+
+- **thalachh**: frecuencia cardíaca máxima alcanzada, es una variable numérica. Se ha importado correctamente con valores entre 71 y 202. No se detectan valores extremos.
+
+- **exng**: variable dicotómica toma el valor de 1 si el ejercicio produce angina, 0 en caso contrario. Se ha importado como int se convierte a una variable booleana utilizando la función _as.logical()_.
+
+- **oldpeak**: indica el valor de la depresión del segmento ST del ECG causada por el ejercicio físico. Se ha importado correctamente como número, no se detectan valores extremos.
+
+- **slp**: indica la inclinación del segmento ST del ECG durante el ejercicio, puede tomar tres valores, 2, 1, 0. Se ha importado correctamente como integer.
+
+- **caa**: indica el número de vasos sanguíneos afectados, puede tomar valores de 0 a 4. Se ha importado correctamente como integer.
+
+- **thall**: representa el resultado de la prueba de "thalium stress test" puede tomar los valores de 1 a 3. Es una variable categórica que se ha importado como variable numérica. Se convierte a factor con la función _as.factor()_
+
+- **output**: representa la predicción sobre enfermedades cardiacas, puede asumir valores 0 o 1. Se ha importado como integer pero debería ser una variable categórica, se convierte con la función _as.factor()_. También se podría convertir a variable de tipo booleano.
+
+
+```{r dataset read preprocessing}
+#Se importa el datased
+dset <- read.csv(file="heart.csv")
+dim(dset)
+head(dset)
+#Se comprueba tipo de variables importadas
+sapply(dset, class)
+#Copia del dataset original
+dset.clean <- dset
+#Comprobación Age
+summary(dset.clean$age)
+boxplot(dset.clean$age)
+#Comprobación Sex
+unique(dset.clean$sex)
+dset.clean$sex <- factor(dset.clean$sex,
+                         levels=c(0,1),
+                         labels=c("F", "M"))
+#Comprobación cp
+unique(dset.clean$cp)
+dset.clean$cp <- as.factor(dset.clean$cp)
+#Comprobación trtbps
+summary(dset.clean$trtbps)
+#Comprobación chol
+summary(dset.clean$chol)
+boxplot(dset.clean$chol)
+#Comprobación fbs
+unique(dset.clean$fbs)
+dset.clean$fbs <- as.logical(dset.clean$fbs)
+#Comprobación restecg
+unique(dset.clean$restecg)
+dset.clean$restecg <- as.factor(dset.clean$restecg)
+#Comprobación thalachh
+summary(dset.clean$thalachh)
+#Comprobación exng
+unique(dset.clean$exng)
+dset.clean$exng <- as.logical(dset.clean$exng)
+#Comprobación oldpeak
+summary(dset.clean$oldpeak)
+#Comprobación slope
+unique(dset.clean$slp)
+dset.clean$slp <- as.logical(dset.clean$slp)
+#Comprobación caa
+unique(dset.clean$caa)
+summary(dset.clean$caa)
+#Comprobación thal
+unique(dset.clean$thall)
+dset.clean$thall <- as.factor(dset.clean$thall)
+#Comprobación output
+unique(dset.clean$output)
+dset.clean$output <- as.factor(dset.clean$output)
+#Comprobación tipos variables final
+sapply(dset.clean, class)
+```
+## 2.Limpieza de los datos
+Se detecta un valor extremo solamente en la variable _chol_. El valor máximo de 564 mg/dl se encuentra bien por encima del "bigote" superior del diagrama de caja y debería inducirnos a pensar que se trata de un error. Sin embargo el valor no es tan elevado como para no ser un valor plausible así que se considerará como un valor elevado pero real.
+
+Entre las variables numéricas se detectan varios ceros en la variable _oldpeak_. Esta variable describe la depresión del segmento ST en el ECG del paciente durante el ejercicio, el valor cero es un valor normal que indica que no hay depresión en el segmento ST del ECG durante el ejercicio y por tanto se aceptan todos los ceros.
+
+Se detecta una entrada duplicada, se elimina dicha entrada ya que al tener exactamente los mismos datos se trata probablemente de un error en la introducción de los datos.
+
+```{r data cleaning}
+#Se buscan los valores duplicados
+#duplicated(dset.clean)
+dset.clean[duplicated(dset.clean),]
+
+dim(dset.clean)
+dset.clean <- unique(dset.clean)
+dim(dset.clean)
+
+#Se buscan los NAs
+which(is.na(dset.clean))
+
+#Se visualiza la distribución de algunas variables cuantitativas: age, chol, trtbps
+ggplot(dset.clean, aes(x=age)) + 
+  geom_histogram(binwidth = 5, fill = "white", colour = "black") +
+  ggtitle("Histograma de distribución de age - binwidth = 5")
+#Se detecta una distribución unimodal con asimetría  la izquierda
+ggplot(dset.clean, aes(x=chol)) + 
+  geom_histogram(binwidth = 20, fill = "white", colour = "black") +
+  ggtitle("Histograma de distribución de chol - binwidth = 20")
+#Se detecta una distribución que se aproxima bastante a auna normal,  unimodal, con una cola a la derecha bastante larga, con varias clases vacías y outliers a la derecha
+ggplot(dset.clean, aes(x=trtbps)) + 
+  geom_histogram(binwidth = 10, fill = "white", colour = "black") +
+  ggtitle("Histograma de distribución de trtbps - binwidth = 10")
+#Se detecta una distribución que se aproxima bastante a auna normal,  unimodal, asimétrica con cola a la derecha
+
+#Se visualiza la distribución de algunas variables cualitativas
+#Se puede ver que hay una mayoría de sujetos de sexo masculino
+pie(table(dset.clean$sex), labels=paste(c("F", "M"), ": ", table(dset.clean$sex)))
+table(dset.clean$sex)
+
+#Se puede ver que la mayoría de los pacientes no presenta vasos sanguinéos afectados
+pie(table(dset.clean$caa), labels=paste(c("0", "1", "2", "3", "4"), ": ", table(dset.clean$caa)))
+table(dset.clean$caa)
+```
+
+## 3.Integración y selección
+Se crean algunas subselecciones de los datos de grupos de pacientes que permiten hacer análisis específicas:
+Pacientes de edad superior o igual a 50 años ( _dset.clean.over50_ ) y pacientes más jóvenes( _dset.clean.under50_ ).
+Pacientes de sexo masculino ( _dset.clean.M_ ) y pacientes de sexo femenino ( _dset.clean.F_ ).
+
+Asimismo se crea una nueva variable cualitativa (discretización) que identifica a los pacientes con más de 50 años, es la variable booleana U50, TRUE si el paciente tiene 50 o menos años, esta variable es útil para poder trabajar con el mismo dataset.
+Se crea también una variable cualitativa (discretización) con 3 niveles para el nivel de colesterol, N (normal) si está por debajo de 200, H (high) entre 200 y 240 y R (risk) por encima de 240.
+
+```{r subset}
+dset.clean.over50 <- subset(dset.clean, age >= 50)
+dset.clean.under50 <- subset(dset.clean, age < 50)
+summary(dset.clean.over50$age)
+summary(dset.clean.under50$age)
+
+dset.clean$U50 <- with(dset.clean, ifelse(age < 50, TRUE, FALSE))
+dset.clean$U50 <- as.factor(dset.clean$U50)
+
+dset.clean$levchol <- as.factor(with(dset.clean, ifelse(chol <= 200, "N",
+                                             ifelse(chol <= 240, "H", "R"))))
+
+dset.clean.M <- subset(dset.clean, sex == "M")
+dset.clean.F <- subset(dset.clean, sex == "F")
+summary(dset.clean.M$sex)
+summary(dset.clean.F$sex)
+```
+
+## 4.Análisis de los datos
+
+### 4.a Contraste de hipótesis sobre la media
+El primer análisis que se hace es sobre los niveles de colesterol, las preguntas de investigación son:
+
+1. Los pacientes de sexo masculino presentan valores de colesterol significativamente diferentes que las pacientes de sexo femenino?
+2. Los pacientes (de ambos sexos) con menos de 50 años presentan niveles de colesterol significativamente diferentes a los pacientes con más de 50 años?
+
+Los 4 grupos tienen más de 30 elementos cada uno, por tanto se puede considerar que por el teorema del límite central el contraste de hipótesis sobre la media de una muestra se aproxima a una distribución normal aunque la población original no siga una distribución normal. La varianza de la variable "chol" de las poblaciones es desconocida pero se puede comprobar si hay homogeneidad de varianzas entre las parejas a comparar utilizando la prueba de Levene _leveneTest()_.
+
+Se comprueba la homogeneidad de la varianza entre grupos de pacientes de más y menos de 50 años y entre pacientes de sexo Masculino y Femenino utilizando la prueba de Levene.
+Considerando un nivel de significancia $\alpha = 0.05$ , podemos ver que:
+
+- el p-value en el caso de la prueba entre grupos de edades es de 0.2423, un valor superior a $\alpha$, por tanto tenemos que aceptar la hipótesis nula y considerar que las varianzas son iguales.
+
+- el p-value en el caso de la prueba entre sexos es de 0.0007684, un valor inferior a $\alpha$, por tanto tenemos que rechazar la hipótesis nula y considerar que las varianzas no son iguales.
+
+```{r normality homoscedasticity chol}
+summary(dset.clean.under50$chol)
+length((dset.clean.under50$chol))
+length((dset.clean.over50$chol))
+
+leveneTest(chol ~ U50, data=dset.clean)
+
+ggplot(dset.clean, aes(x = U50, y=chol))+
+  geom_boxplot()
+
+leveneTest(chol ~ sex, data=dset.clean)
+ggplot(dset.clean, aes(x = sex, y=chol))+
+  geom_boxplot()
+```
+Una vez comprobada la normalidad (con el teorema del límite central) y la homoscedasticidad de las variables podemos proceder con los contrastes de hipótesis para responder a las preguntas de investigación.
+
+En el caso de varianzas iguales se utilizará un T-Test (prueba t de Student) mientras que para variables con varianzas no iguales se utilizará el T-Test de Welch.
+
+Considerando un valor de significancia $\alpha = 0.05$ y observando los resultados de las pruebas podemos observar que:
+
+- hay una diferencia significativa entre los niveles de colesterol en la población de sexo masculino y de sexo femenino. El p-value es de 0.003403, por tanto hay que rechazar la hipótesis nula de igualdad de niveles de colesterol.
+
+- hay una diferencia significativa entre los niveles de colesterol en la población de referencia de edad inferior o superior a 50 años. El p-value es 0.00351, por tanto hay que rechzar la hipótesis nula de igualdad de niveles de colesterol.
+
+
+```{r chol hypotesis}
+t.test(dset.clean$chol[dset.clean$sex=="M"], dset.clean$chol[dset.clean$sex=="F"], alternative = "two.sided", var.equal=FALSE)
+
+t.test(dset.clean$chol[dset.clean$U50==TRUE], dset.clean$chol[dset.clean$U50==FALSE], alternative = "two.sided", var.equal=TRUE)
+```
+### 4.b Correlación entre variables cuantitativas
+En este caso se quiere determinar si existe algún tipo de correlación entre variables cuantitativas:
+
+- Edad y nivel de colesterol. ¿El nivel de colesterol aumenta con el aumentar de la edad?
+- Edad y tensión arterial. ¿La tensión arterial aumenta con el aumentar de la edad?
+- Nivel de colesterol y tensión arterial. ¿La tensión arterial aumenta con el aumentar del nivel de colesterol?
+
+Se lleva a cabo el test de normalidad de Shapiro-Wilk para las 3 variables objeto de estudio, el resultado del test obliga a rechazar la hipótesis de normalidad para las tres variables. Será necesario, por tanto, llevar a cabo una prueba de correlación no paramétrica, por esta razón se prefiere la prueba de Spearman a la de Pearson, ya que la primera no conlleva ninguna suposición sobre la distribución de los datos.
+
+Asimismo se visualiza con un gráfico de tipo scatterplot la distribución de las variables, parece evidente que no hay ninguna correlación entre ellas. El resultado de las pruebas de correlación de Spearman confirma este primer resultado, los valores son siempre bajos e indican una correlación muy débil:
+
+- Edad y nivel de colesterol: 0.2897
+- Edad y tensión arterial: 0.1889
+- Nivel de colesterol y tensión arterial: 0.1302
+
+```{R correlation}
+shapiro.test(dset.clean$age)
+shapiro.test(dset.clean$chol)
+shapiro.test(dset.clean$trtbps)
+
+qqnorm(dset.clean$age, pch = 1)
+qqnorm(dset.clean$chol, pch = 1)
+qqnorm(dset.clean$trtbps, pch = 1)
+
+ggplot(dset.clean, aes(x=age, y=trtbps))+
+  geom_point()
+cor(dset.clean$age, dset.clean$trtbps, method="spearman")
+cor.test(dset.clean$age, dset.clean$trtbps, method="spearman")
+
+ggplot(dset.clean, aes(x=age, y=chol))+
+  geom_point()
+cor(dset.clean$age, dset.clean$chol, method="spearman")
+cor.test(dset.clean$age, dset.clean$chol, method="spearman")
+
+ggplot(dset.clean, aes(x=chol, y=trtbps))+
+  geom_point()
+cor(dset.clean$chol, dset.clean$trtbps, method="spearman")
+cor.test(dset.clean$chol, dset.clean$trtbps, method="spearman")
+
+```
+
+### 4.c Correlación entre variables categoricas
+En este caso se quiere determinar si existe alguna relación entre el sexo del paciente y tipo de dolor en el pecho que presenta. Se recuerda que el tipo de dolor puede asumir 4 valores, entre 0,1,2,3. Estos valores no se consideran como números, si no más bien como niveles, es decir como una variable cualitativa.
+
+Para determinar si existe algún tipo de relación entre las dos variables se utiliza el coeficiente V de Cramér. Para ello primero es necesario crear una tabla de contingencia utilizando la función _table()_ con las dos variables _sex_ y _cp_.
+Luego se puede utilizar la función _cramerV()_ para calcular el coeficiente V de Cramér, este coeficiente oscila entre 0 (independencia) y 1. Se puede ver que el resultado es un número bajo, 0,1533 por tanto se puede asumir que no hay correlación entre el sexo y el tipo dolor en el pecho del paciente.
+
+Se comprueba si existe también algún tipo de correlación entre la variable _sex_ y la variable _output_, es lógico que exista algún tipo de correlación ya que la variable _output_ es el resultado de una predicción basada en los datos disponibles. El resultado del coeficiente de Cramér es 0.2836. Indíca que hay una correlación débil entre el sexo y el resultado de la predicción sobre el riesgo cardíaco.
+
+Se quiere comprobar también si existe correlación entre niveles altos o muy altos de colesterol y el valor de la variable output. El coeficiente V de Cramér para esta correlación es muy bajo así que no se puede decir que exista correlación entre las dos variables.
+
+```{r correlation cathegorical vars}
+table.sex.cp <- table(dset.clean$sex, dset.clean$cp)
+table.sex.cp
+prop.table.sex.cp <- prop.table(table.sex.cp)
+prop.table.sex.cp
+cramerV(table.sex.cp)
+
+barplot(table.sex.cp, main = "Sexo y Dolor Pecho", xlab= "Tipo de dolor", ylab="Pacientes", col = c("lightblue", "gray"), legend.text = TRUE )
+
+
+table.sex.output <- table(dset.clean$sex, dset.clean$output)
+table.sex.output
+cramerV(table.sex.output)
+barplot(table.sex.output, main = "Sexo y Predicción", xlab= "Predicción", ylab="Pacientes", col = c("lightblue", "gray"), legend.text = TRUE )
+
+table.levchol.output <- table(dset.clean$levchol, dset.clean$output)
+table.levchol.output
+cramerV(table.levchol.output)
+barplot(table.levchol.output, main = "Nivel de colesterol y Predicción", xlab= "Predicción", ylab="Pacientes", col = c("lightblue", "gray", "red"), legend.text = TRUE )
+
+```
+
+### 4.d Comparación entre más de dos grupos
+En este apartado se quiere comparar la media de la variable _thalachh_ (frecuencia máxima alcanzada) entre los grupos de personas con colesterol normal (N), alto (H) o muy alto (R). Se puede comprobar que la frecuencia máxima no sigue una distribución normal ya que el test de Shapiro-Wilk da un valor p-value inferior a 0,05 que es el nivel de significancia establecido. Sin embargo con el test de Flighner-Killeen se puede establecer que hay homogeneidad de varianzas.
+En este caso se utiliza el test de Kruskal-Wallis para establecer si hay diferencia significativa entre las medias de la variable _thalachh_ y las 3 categorías de pacientes por nivel de colesterol en la sangre. Considerando el resultado del test, p-value = 0.1496, no es posible rechazar la hipótesis nula y por tanto no se puede afirmar que hay diferencias significativas en la frecuencia máxima alcanzada dependiendo de los niveles de colesterol.
+
+```{R anova}
+#Test de normalidad Shapiro-Wilk
+shapiro.test(dset.clean$thalachh)
+hist(dset.clean$thalachh)
+
+#Test de homogeneidad de varianzas de Fligner-Killeen
+fligner.test(thalachh ~ levchol, data=dset.clean)
+
+#Test de contraste de hipótesis entre más de dos grupos de Kruskal-Wallis
+kruskal.test(thalachh ~ levchol, data=dset.clean)
+
+```
+
+### 4.e Regresión logística
+En este apartado se quiere estimar un modelo de regresión logística para predecir el valor de la variable _output_ y comprobar cuales variables son realmente significativas para la predicción del resultado.
+Los pasos a seguir serán los siguientes:
+- **1**: Generación de los conjuntos de entrenamiento y de test. Se utiliza el 80% de los datos para el entrenamiento y el 20% para el testing.
+- **2**: Estimación del modelo con el conjunto de entrenamiento, interpretación de las variables significativas. Es curioso ver como la edad no parece ser una variable significativa para la predicción, así como la tensión arterial en reposo, el valor de la glucosa (fbs), los resultados del ECG (restecg), la inclinación del segmento ST del ECT (slp), el resultado del thalium stress test (thall).
+- **3**: Estimación del modelo con el conjunto de entrenamiento y las variables significativas. No hay colinealidad entre las variables seleccionadas.
+- **4**: Cálculo de las OR
+- **5**: Predicción con el conjunto de test y cálculo de la matriz de confusión. En la matriz de confusión se puede ver que la sensibilidad (proporción de casos positivos correctamente clasificados) del modelo es de 0.7083 mientras que la especificidad (proporción de casos negativos correctamente clasificados) es de 0.84.
+- **6**: Estimación de la curva ROC y del área debajo de la curva. El AUC=0.907, un valor alto que indica que el modelo discrimina muy bien.
+- **7**: Evaluación de la bondad del ajuste con el test Chi-cuadrado. A la vista de los resultados el ajuste es bueno con un p-value de 0.
+
+
+```{r logistic regression}
+#Generación de los dos conjuntos de entrenamiento (80%) y de testing (%20)
+set.seed(1)
+sample <- sample(c(TRUE, FALSE), nrow(dset.clean), replace = TRUE, prob=c(0.8,0.2))
+dset.train <- dset.clean[sample,]
+dset.test <- dset.clean[!sample,]
+
+#Se genera el modelo de regresión logística utilizando el conjunto de entrenamiento
+dset.model <- glm(formula = output ~ age + sex + cp + trtbps + chol + fbs + restecg + thalachh + exng + oldpeak + slp + caa + thall, family = binomial (link=logit), data = dset.train)
+
+summary(dset.model)
+
+#Se puede ver que algunas de las variables no son significativas, se pueden por tanto excluir del modelo
+dset.model1 <- glm(formula = output ~ sex + cp + chol + thalachh + exng + oldpeak + caa, family = binomial (link=logit), data = dset.train)
+
+summary(dset.model1)
+#Se calcula la colinealidad del modelo, no se aprecia colinealidad entre las variables
+vif(dset.model1)
+
+#Cálculo de las Odds-Ratio
+dset.model1.OR <- exp(coefficients(dset.model1))
+dset.model1.OR
+
+#Se calcula la predicción de la probabilidad ajustada de output con los datos del conjunto de testing
+dset.model1.predicted <- predict(dset.model1, dset.test, type="response")
+#Se define un valor límite para discriminar entre pacientes de riesgo y no
+threshold <- 0.5
+#Se asigna dicho valor a una variable dicotómica
+dset.model1.predicted.class <- as.factor(ifelse(dset.model1.predicted>threshold,1,0))
+dset.model1.predicted.class
+#Se genera un dataframe con la variable dicotómica ajustada y la observada
+performance.data <- data.frame(observed=dset.test$output, predicted=dset.model1.predicted.class)
+
+#Se calcula la matriz de confusión
+performance.data.cm <- confusionMatrix(data=performance.data$predicted, reference=performance.data$observed)
+performance.data.cm
+
+#Se estima la curva ROC y el área debajo de la curva
+dset.model1.predicted.total <- predict(dset.model1, dset.clean, type="response")
+curva.roc <- roc(dset.clean$output, dset.model1.predicted.total)
+plot(curva.roc)
+auc(curva.roc)
+dset.model1
+
+model1.sumresiduals <- sum(residuals(dset.model1, type="pearson")^2)
+model1.null <- dset.model1$df.null
+model1.residual <- dset.model1$df.residual
+
+dset.model1.pchisq <- 1-pchisq(model1.sumresiduals, model1.null-model1.residual)
+dset.model1.pchisq
+
+```
+## 6. Resolución del problema
+Los resultados obtenidos a partir de la información disponible son los siguientes:
+
+1. Hay una diferencia significativa entre los niveles de colesterol entre la población de sexo masculino y femenino.
+2. Hay una diferencia significativa entre los niveles de colesterol entre la población con más de 50 años y con menos de 50 años.
+3. Hay una correlación muy débil entre la edad y el nivel de colesterol del paciente
+4. No hay correlación entre la edad y la tensión arterial
+5. No hay correlación entre el nivel de colesterol y la tensión arterial
+6. No hay relación entre el sexo y el tipo de dolor en el pecho del paciente
+7. No hay relación significativa entre el sexo del paciente y la variable output
+8. No hay relación entre el nivel de colesterol y la variable output
+9. No hay diferencias significativas entre las medias de la frecuencia cardiaca alcanzada y las categorías de nivel de colesterol (normal, alto, muy alto)
+10. Es posible calcular un buen modelo predictivo de regresión logística basado en algunas de las variables disponibles.
+
+```{R write csv}
+#Genera el csv del nuevo dataset
+write.csv(dset.clean, "dset_clean.csv")
+#Extrae el código sin el markdown
+knitr::purl("PRA2.Rmd")
+```
+
+## 7. Contribuciones
+```{R table}
+Contribuciones <- c("Investigación previa", "Redacción de las respuestas", "Desarrollo del Código", "Participación en el vídeo")
+Firma <- c("MR", "MR", "MR", "MR")
+
+tasks <- data.frame(Contribuciones, Firma)
+tasks
+
+knitr::kable(tasks, "pipe")
+```
