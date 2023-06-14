@@ -257,8 +257,10 @@ dset.model1.pchisq
 
 
 ## ----write csv----------------------------------------
+#Genera el csv del nuevo dataset
 write.csv(dset.clean, "dset_clean.csv")
-knitr::purl()
+#Extrae el código sin el markdown
+knitr::purl("PRA2.Rmd")
 
 
 ## ----table--------------------------------------------
