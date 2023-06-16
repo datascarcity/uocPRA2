@@ -12,3 +12,5 @@ Ficheros:
 - PRA2.R es el fichero con el código R sin el markdown
 
 - PRA2.Rmd es el fichero completo del documento en R markdown
+
+- PRA2.PDF es el fichero en PDF con las respuestas de la práctica

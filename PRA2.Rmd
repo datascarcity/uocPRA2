@@ -3,6 +3,8 @@ title: "Práctica 2"
 author: "Marco Rizzetto"
 date: "2023-06-16"
 output: pdf_document
+fontsize: 10pt
+geometry: margin=1.5cm
 ---
 
 ```{r setup, include=FALSE}
@@ -59,7 +61,7 @@ Se puede proceder a comprobar que las variables se hayan importado en el formato
 - **output**: representa la predicción sobre enfermedades cardiacas, puede asumir valores 0 o 1. Se ha importado como integer pero debería ser una variable categórica, se convierte con la función _as.factor()_. También se podría convertir a variable de tipo booleano.
 
 
-```{r dataset read preprocessing}
+```{r dataset read preprocessing, fig.dim=c(5,3)}
 #Se importa el datased
 dset <- read.csv(file="heart.csv")
 dim(dset)
@@ -119,7 +121,7 @@ Entre las variables numéricas se detectan varios ceros en la variable _oldpeak_
 
 Se detecta una entrada duplicada, se elimina dicha entrada ya que al tener exactamente los mismos datos se trata probablemente de un error en la introducción de los datos.
 
-```{r data cleaning}
+```{r data cleaning, fig.dim=c(5,3)}
 #Se buscan los valores duplicados
 #duplicated(dset.clean)
 dset.clean[duplicated(dset.clean),]
@@ -139,11 +141,13 @@ ggplot(dset.clean, aes(x=age)) +
 ggplot(dset.clean, aes(x=chol)) + 
   geom_histogram(binwidth = 20, fill = "white", colour = "black") +
   ggtitle("Histograma de distribución de chol - binwidth = 20")
-#Se detecta una distribución que se aproxima bastante a auna normal,  unimodal, con una cola a la derecha bastante larga, con varias clases vacías y outliers a la derecha
+#Se detecta una distribución que se aproxima bastante a auna normal,  unimodal, 
+#con una cola a la derecha bastante larga, con varias clases vacías y outliers a la derecha
 ggplot(dset.clean, aes(x=trtbps)) + 
   geom_histogram(binwidth = 10, fill = "white", colour = "black") +
   ggtitle("Histograma de distribución de trtbps - binwidth = 10")
-#Se detecta una distribución que se aproxima bastante a auna normal,  unimodal, asimétrica con cola a la derecha
+#Se detecta una distribución que se aproxima bastante a auna normal,  unimodal,
+#asimétrica con cola a la derecha
 
 #Se visualiza la distribución de algunas variables cualitativas
 #Se puede ver que hay una mayoría de sujetos de sexo masculino
@@ -151,7 +155,8 @@ pie(table(dset.clean$sex), labels=paste(c("F", "M"), ": ", table(dset.clean$sex)
 table(dset.clean$sex)
 
 #Se puede ver que la mayoría de los pacientes no presenta vasos sanguinéos afectados
-pie(table(dset.clean$caa), labels=paste(c("0", "1", "2", "3", "4"), ": ", table(dset.clean$caa)))
+pie(table(dset.clean$caa), labels=paste(c("0", "1", "2", "3", "4"), ": ", 
+                                        table(dset.clean$caa)))
 table(dset.clean$caa)
 ```
 
@@ -224,11 +229,14 @@ Considerando un valor de significancia $\alpha = 0.05$ y observando los resultad
 
 
 ```{r chol hypotesis}
-t.test(dset.clean$chol[dset.clean$sex=="M"], dset.clean$chol[dset.clean$sex=="F"], alternative = "two.sided", var.equal=FALSE)
+t.test(dset.clean$chol[dset.clean$sex=="M"], dset.clean$chol[dset.clean$sex=="F"], 
+       alternative = "two.sided", var.equal=FALSE)
 
-t.test(dset.clean$chol[dset.clean$U50==TRUE], dset.clean$chol[dset.clean$U50==FALSE], alternative = "two.sided", var.equal=TRUE)
+t.test(dset.clean$chol[dset.clean$U50==TRUE], dset.clean$chol[dset.clean$U50==FALSE], 
+       alternative = "two.sided", var.equal=TRUE)
 ```
 ### 4.b Correlación entre variables cuantitativas
+
 En este caso se quiere determinar si existe algún tipo de correlación entre variables cuantitativas:
 
 - Edad y nivel de colesterol. ¿El nivel de colesterol aumenta con el aumentar de la edad?
@@ -243,7 +251,7 @@ Asimismo se visualiza con un gráfico de tipo scatterplot la distribución de la
 - Edad y tensión arterial: 0.1889
 - Nivel de colesterol y tensión arterial: 0.1302
 
-```{R correlation}
+```{R correlation, fig.dim=c(5,3)}
 shapiro.test(dset.clean$age)
 shapiro.test(dset.clean$chol)
 shapiro.test(dset.clean$trtbps)
@@ -279,29 +287,34 @@ Se comprueba si existe también algún tipo de correlación entre la variable _s
 
 Se quiere comprobar también si existe correlación entre niveles altos o muy altos de colesterol y el valor de la variable output. El coeficiente V de Cramér para esta correlación es muy bajo así que no se puede decir que exista correlación entre las dos variables.
 
-```{r correlation cathegorical vars}
+```{r correlation cathegorical vars, fig.dim=c(5,3)}
 table.sex.cp <- table(dset.clean$sex, dset.clean$cp)
 table.sex.cp
 prop.table.sex.cp <- prop.table(table.sex.cp)
 prop.table.sex.cp
 cramerV(table.sex.cp)
 
-barplot(table.sex.cp, main = "Sexo y Dolor Pecho", xlab= "Tipo de dolor", ylab="Pacientes", col = c("lightblue", "gray"), legend.text = TRUE )
+barplot(table.sex.cp, main = "Sexo y Dolor Pecho", xlab= "Tipo de dolor", 
+        ylab="Pacientes", col = c("lightblue", "gray"), legend.text = TRUE )
 
 
 table.sex.output <- table(dset.clean$sex, dset.clean$output)
 table.sex.output
 cramerV(table.sex.output)
-barplot(table.sex.output, main = "Sexo y Predicción", xlab= "Predicción", ylab="Pacientes", col = c("lightblue", "gray"), legend.text = TRUE )
+barplot(table.sex.output, main = "Sexo y Predicción", xlab= "Predicción", 
+        ylab="Pacientes", col = c("lightblue", "gray"), legend.text = TRUE )
 
 table.levchol.output <- table(dset.clean$levchol, dset.clean$output)
 table.levchol.output
 cramerV(table.levchol.output)
-barplot(table.levchol.output, main = "Nivel de colesterol y Predicción", xlab= "Predicción", ylab="Pacientes", col = c("lightblue", "gray", "red"), legend.text = TRUE )
+barplot(table.levchol.output, main = "Nivel de colesterol y Predicción", 
+        xlab= "Predicción", ylab="Pacientes", col = c("lightblue", "gray", "red"),
+        legend.text = TRUE )
 
 ```
 
 ### 4.d Comparación entre más de dos grupos
+
 En este apartado se quiere comparar la media de la variable _thalachh_ (frecuencia máxima alcanzada) entre los grupos de personas con colesterol normal (N), alto (H) o muy alto (R). Se puede comprobar que la frecuencia máxima no sigue una distribución normal ya que el test de Shapiro-Wilk da un valor p-value inferior a 0,05 que es el nivel de significancia establecido. Sin embargo con el test de Flighner-Killeen se puede establecer que hay homogeneidad de varianzas.
 En este caso se utiliza el test de Kruskal-Wallis para establecer si hay diferencia significativa entre las medias de la variable _thalachh_ y las 3 categorías de pacientes por nivel de colesterol en la sangre. Considerando el resultado del test, p-value = 0.1496, no es posible rechazar la hipótesis nula y por tanto no se puede afirmar que hay diferencias significativas en la frecuencia máxima alcanzada dependiendo de los niveles de colesterol.
 
@@ -338,12 +351,15 @@ dset.train <- dset.clean[sample,]
 dset.test <- dset.clean[!sample,]
 
 #Se genera el modelo de regresión logística utilizando el conjunto de entrenamiento
-dset.model <- glm(formula = output ~ age + sex + cp + trtbps + chol + fbs + restecg + thalachh + exng + oldpeak + slp + caa + thall, family = binomial (link=logit), data = dset.train)
+dset.model <- glm(formula = output ~ age + sex + cp + trtbps + chol + fbs + 
+                    restecg + thalachh + exng + oldpeak + slp + caa + thall, 
+                  family = binomial (link=logit), data = dset.train)
 
 summary(dset.model)
 
 #Se puede ver que algunas de las variables no son significativas, se pueden por tanto excluir del modelo
-dset.model1 <- glm(formula = output ~ sex + cp + chol + thalachh + exng + oldpeak + caa, family = binomial (link=logit), data = dset.train)
+dset.model1 <- glm(formula = output ~ sex + cp + chol + thalachh + exng + 
+                     oldpeak + caa, family = binomial (link=logit), data = dset.train)
 
 summary(dset.model1)
 #Se calcula la colinealidad del modelo, no se aprecia colinealidad entre las variables
@@ -361,7 +377,8 @@ threshold <- 0.5
 dset.model1.predicted.class <- as.factor(ifelse(dset.model1.predicted>threshold,1,0))
 dset.model1.predicted.class
 #Se genera un dataframe con la variable dicotómica ajustada y la observada
-performance.data <- data.frame(observed=dset.test$output, predicted=dset.model1.predicted.class)
+performance.data <- data.frame(observed=dset.test$output, 
+                               predicted=dset.model1.predicted.class)
 
 #Se calcula la matriz de confusión
 performance.data.cm <- confusionMatrix(data=performance.data$predicted, reference=performance.data$observed)
@@ -399,13 +416,13 @@ Los resultados obtenidos a partir de la información disponible son los siguient
 ```{R write csv}
 #Genera el csv del nuevo dataset
 write.csv(dset.clean, "dset_clean.csv")
-#Extrae el código sin el markdown
-knitr::purl("PRA2.Rmd")
+
 ```
 
 ## 7. Contribuciones
 ```{R table}
-Contribuciones <- c("Investigación previa", "Redacción de las respuestas", "Desarrollo del Código", "Participación en el vídeo")
+Contribuciones <- c("Investigación previa", "Redacción de las respuestas",
+                    "Desarrollo del Código", "Participación en el vídeo")
 Firma <- c("MR", "MR", "MR", "MR")
 
 tasks <- data.frame(Contribuciones, Firma)
